@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Datum — Plain-Text to Instant Architectural Floor Plans</title>
+  <meta name="description" content="Generate CAD-ready architectural floor plans and furniture layouts directly from plain-text room descriptions with fraction-inch precision.">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="blueprint-theme">
+  <!-- Corner Blueprint Registration Marks (Pinned to extreme outer margins) -->
+  <div class="reg-mark reg-tl" aria-hidden="true"><span>+</span><label>REG-01 [0,0]</label></div>
+  <div class="reg-mark reg-tr" aria-hidden="true"><span>+</span><label>REG-02 [X_MAX,0]</label></div>
+  <div class="reg-mark reg-bl" aria-hidden="true"><span>+</span><label>REG-03 [0,Y_MAX]</label></div>
+  <div class="reg-mark reg-br" aria-hidden="true"><span>+</span><label>REG-04 [X_MAX,Y_MAX]</label></div>
+
+  <!-- Technical Sheet Border Frame -->
+  <div class="sheet-frame" aria-hidden="true">
+    <div class="frame-edge top-edge">
+      <span class="grid-coord">A</span>
+      <span class="grid-coord">B</span>
+      <span class="grid-coord">C</span>
+      <span class="grid-coord">D</span>
+      <span class="grid-coord">E</span>
+      <span class="grid-coord">F</span>
+      <span class="grid-coord">G</span>
+      <span class="grid-coord">H</span>
+    </div>
+    <div class="frame-edge left-edge">
+      <span class="grid-coord">1</span>
+      <span class="grid-coord">2</span>
+      <span class="grid-coord">3</span>
+      <span class="grid-coord">4</span>
+      <span class="grid-coord">5</span>
+      <span class="grid-coord">6</span>
+    </div>
+  </div>
+
+  <!-- Sticky Navigation -->
+  <header class="blueprint-nav" id="main-nav">
+    <div class="nav-container">
+      <div class="nav-brand">
+        <a href="#" class="brand-link" aria-label="Datum Home">
+          <!-- Precise Registration Crosshair Datum Logo -->
+          <svg class="brand-glyph" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <line x1="12" y1="1" x2="12" y2="6" stroke="#7fb3d5" stroke-width="1.5"/>
+            <line x1="12" y1="18" x2="12" y2="23" stroke="#7fb3d5" stroke-width="1.5"/>
+            <line x1="1" y1="12" x2="6" y2="12" stroke="#7fb3d5" stroke-width="1.5"/>
+            <line x1="18" y1="12" x2="23" y2="12" stroke="#7fb3d5" stroke-width="1.5"/>
+            <circle cx="12" cy="12" r="6" stroke="#eef1f5" stroke-width="1.5" fill="none"/>
+            <circle cx="12" cy="12" r="2" fill="#e8a33d"/>
+          </svg>
+          <span class="brand-name">DATUM</span>
+          <span class="brand-tag">SYS.01 // v2.4</span>
+        </a>
+      </div>
+
+      <nav class="nav-links" aria-label="Primary Navigation">
+        <a href="#how-it-works" class="nav-item"><span class="nav-num">01.</span> PROCESS</a>
+        <a href="#interactive-demo" class="nav-item"><span class="nav-num">02.</span> SANDBOX</a>
+        <a href="#specifications" class="nav-item"><span class="nav-num">03.</span> SPECIFICATIONS</a>
+        <a href="#title-block" class="nav-item"><span class="nav-num">04.</span> SHEET DATA</a>
+      </nav>
+
+      <div class="nav-action">
+        <span class="nav-telemetry" id="cursor-coords" aria-hidden="true">X: 24'-0" | Y: 18'-6"</span>
+        <a href="#interactive-demo" class="btn btn-primary btn-sm" id="nav-cta-btn">
+          <span class="btn-bracket">[</span>
+          <span class="btn-text">COMPILE LAYOUT</span>
+          <span class="btn-bracket">]</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <!-- SECTION 1: HERO -->
+    <section class="hero-section" id="hero">
+      <div class="hero-container">
+        
+        <!-- Left Column: Copy & Input -->
+        <div class="hero-content">
+          <div class="hero-content-top">
+            <div class="tech-badge">
+              <span class="badge-dot"></span>
+              <span class="badge-label">NATURAL LANGUAGE SPATIAL PARSER // CAD CONFORMANT</span>
+            </div>
+
+            <h1 class="hero-title">
+              Describe the room.<br>
+              <span class="hero-highlight">Get the layout.</span>
+            </h1>
+
+            <p class="hero-subtext">
+              Translate plain-text room descriptions into dimensionally constrained, production-ready architectural floor plans in milliseconds. Complete with wall thicknesses, door swing radiuses, window offsets, and circulation clearances.
+            </p>
+
+            <!-- Input Demo Box -->
+            <div class="prompt-compiler-card" id="hero-prompt-box">
+              <div class="card-header">
+                <div class="header-tab">
+                  <span class="tab-indicator active"></span>
+                  <span class="tab-title">PROMPT_INPUT.RAW</span>
+                </div>
+                <div class="header-meta">
+                  <span class="meta-tag">ENCODING: UTF-8</span>
+                  <span class="meta-tag">TARGET: IFC/DXF</span>
+                </div>
+              </div>
+
+              <div class="card-body">
+                <div class="prompt-input-wrapper">
+                  <span class="prompt-prefix">INPUT &gt;</span>
+                  <p class="prompt-text" id="hero-prompt-text">
+                    "Primary bedroom, 16x14ft. King bed centered on north wall with 2ft nightstands. Reading chair angled at southwest corner window. 6ft double-door closet along east wall. Maintain 36-inch clear circulation path to ensuite door on west."
+                  </p>
+                </div>
+              </div>
+
+              <div class="card-footer">
+                <div class="compile-status">
+                  <span class="status-pulse"></span>
+                  <span class="status-text" id="engine-status">SYSTEM READY // CONSTRAINTS: 14/14 RESOLVED</span>
+                </div>
+                <button type="button" class="btn btn-primary" id="hero-compile-btn" aria-label="Compile Layout">
+                  <span class="btn-bracket">[</span>
+                  <span class="btn-text">RUN COMPILER</span>
+                  <span class="btn-bracket">]</span>
+                  <kbd class="btn-kbd">↵ RET</kbd>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hero Metrics & Specs (Anchored to shared bottom baseline) -->
+          <div class="hero-specs-row">
+            <div class="spec-col">
+              <span class="spec-num">0.02s</span>
+              <span class="spec-label">SOLVER LATENCY</span>
+            </div>
+            <div class="spec-col">
+              <span class="spec-num">AIA / ISO</span>
+              <span class="spec-label">DRAFTING STANDARDS</span>
+            </div>
+            <div class="spec-col">
+              <span class="spec-num">±1/16"</span>
+              <span class="spec-label">SPATIAL TOLERANCE</span>
+            </div>
+            <div class="spec-col">
+              <span class="spec-num">VECTOR</span>
+              <span class="spec-label">DXF / IFC / SVG</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: SVG Blueprint Signature Drawing Element -->
+        <div class="hero-canvas-col">
+          <div class="blueprint-canvas-container">
+            <!-- Canvas Header Bar -->
+            <div class="canvas-control-bar">
+              <div class="canvas-meta">
+                <span class="sheet-id">FIG 01.A</span>
+                <span class="sheet-title">PRIMARY_SUITE_LVL1</span>
+                <span class="sheet-scale">SCALE: 1/4" = 1'-0"</span>
+              </div>
+
+              <div class="canvas-actions">
+                <button type="button" class="canvas-btn" id="replay-draw-btn" title="Re-trace Blueprint Drawing">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
+                    <path d="M21 3v5h-5"/>
+                    <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+                    <path d="M3 21v-5h5"/>
+                  </svg>
+                  <span>RE-TRACE</span>
+                </button>
+                <button type="button" class="canvas-btn active" id="toggle-dims-btn" title="Toggle Dimension Annotations">
+                  <span>DIMS: ON</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Floor Plan SVG Area -->
+            <div class="blueprint-canvas" id="blueprint-stage" role="region" aria-label="Floor plan blueprint interactive vector canvas">
+              
+              <!-- SVG Blueprint Line-Drawing Engine -->
+              <svg id="hero-svg" class="drawing-active" viewBox="0 0 600 500" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <!-- Dimension Tick Marker -->
+                  <marker id="tick-start" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <line x1="2" y1="8" x2="8" y2="2" stroke="#7fb3d5" stroke-width="1.5"/>
+                  </marker>
+                  <marker id="tick-end" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <line x1="2" y1="8" x2="8" y2="2" stroke="#7fb3d5" stroke-width="1.5"/>
+                  </marker>
+                  <marker id="tick-amber" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <line x1="2" y1="8" x2="8" y2="2" stroke="#e8a33d" stroke-width="1.5"/>
+                  </marker>
+                  
+                  <!-- Wall Hatch Pattern -->
+                  <pattern id="wall-hatch" width="8" height="8" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+                    <line x1="0" y1="0" x2="0" y2="8" stroke="#2a2e38" stroke-width="1.5"/>
+                  </pattern>
+                </defs>
+
+                <!-- LAYER 0: Blueprint Sheet Background Grid & Registration -->
+                <g class="layer-grid" id="svg-grid-layer">
+                  <line x1="40" y1="40" x2="560" y2="40" stroke="#2a2e38" stroke-width="0.75" stroke-dasharray="2 4"/>
+                  <line x1="40" y1="160" x2="560" y2="160" stroke="#2a2e38" stroke-width="0.5" stroke-dasharray="2 4"/>
+                  <line x1="40" y1="280" x2="560" y2="280" stroke="#2a2e38" stroke-width="0.5" stroke-dasharray="2 4"/>
+                  <line x1="40" y1="400" x2="560" y2="400" stroke="#2a2e38" stroke-width="0.5" stroke-dasharray="2 4"/>
+                  <line x1="40" y1="460" x2="560" y2="460" stroke="#2a2e38" stroke-width="0.75" stroke-dasharray="2 4"/>
+                  
+                  <line x1="80" y1="30" x2="80" y2="470" stroke="#2a2e38" stroke-width="0.75" stroke-dasharray="2 4"/>
+                  <line x1="200" y1="30" x2="200" y2="470" stroke="#2a2e38" stroke-width="0.5" stroke-dasharray="2 4"/>
+                  <line x1="320" y1="30" x2="320" y2="470" stroke="#2a2e38" stroke-width="0.5" stroke-dasharray="2 4"/>
+                  <line x1="440" y1="30" x2="440" y2="470" stroke="#2a2e38" stroke-width="0.5" stroke-dasharray="2 4"/>
+                  <line x1="520" y1="30" x2="520" y2="470" stroke="#2a2e38" stroke-width="0.75" stroke-dasharray="2 4"/>
+
+                  <!-- Sheet crosshairs -->
+                  <path d="M75 75 h10 M80 70 v10" stroke="#7fb3d5" stroke-width="1"/>
+                  <path d="M515 75 h10 M520 70 v10" stroke="#7fb3d5" stroke-width="1"/>
+                  <path d="M75 425 h10 M80 420 v10" stroke="#7fb3d5" stroke-width="1"/>
+                  <path d="M515 425 h10 M520 420 v10" stroke="#7fb3d5" stroke-width="1"/>
+                </g>
+
+                <!-- LAYER 1: Exterior & Interior Structural Walls (Sequenced Line-Draw) -->
+                <g class="layer-walls" id="svg-walls-layer">
+                  <!-- Outer Perimeter Walls (Double Line Architectural Cut) -->
+                  <!-- North Wall with Window Opening -->
+                  <path class="draw-line seq-1 wall-thick" d="M 80 80 L 220 80" />
+                  <path class="draw-line seq-1 wall-thick" d="M 380 80 L 520 80" />
+                  <path class="draw-line seq-1 wall-core" d="M 80 94 L 220 94" />
+                  <path class="draw-line seq-1 wall-core" d="M 380 94 L 520 94" />
+
+                  <!-- East Wall with Closet Partition -->
+                  <path class="draw-line seq-2 wall-thick" d="M 520 80 L 520 420" />
+                  <path class="draw-line seq-2 wall-core" d="M 506 94 L 506 406" />
+
+                  <!-- South Wall with Corner Window & Main Entry -->
+                  <path class="draw-line seq-3 wall-thick" d="M 520 420 L 260 420" />
+                  <path class="draw-line seq-3 wall-thick" d="M 190 420 L 140 420" />
+                  <path class="draw-line seq-3 wall-core" d="M 506 406 L 260 406" />
+                  <path class="draw-line seq-3 wall-core" d="M 190 406 L 140 406" />
+
+                  <!-- West Wall with Ensuite Door Opening -->
+                  <path class="draw-line seq-4 wall-thick" d="M 80 420 L 80 250" />
+                  <path class="draw-line seq-4 wall-thick" d="M 80 180 L 80 80" />
+                  <path class="draw-line seq-4 wall-core" d="M 94 406 L 94 250" />
+                  <path class="draw-line seq-4 wall-core" d="M 94 180 L 94 94" />
+
+                  <!-- Built-in Closet Partition (East Wall) -->
+                  <path class="draw-line seq-5 wall-thin" d="M 430 94 L 430 230 L 506 230" />
+                </g>
+
+                <!-- LAYER 2: Windows, Glazing & Doors (AIA Drafting Conventions) -->
+                <g class="layer-openings" id="svg-openings-layer">
+                  <!-- North Window (220 to 380) -->
+                  <line class="draw-line seq-6 window-glazing" x1="220" y1="87" x2="380" y2="87" stroke="#7fb3d5" stroke-width="1.5"/>
+                  <line class="draw-line seq-6 window-sill" x1="220" y1="80" x2="380" y2="80" stroke="#7fb3d5" stroke-width="0.75"/>
+                  <line class="draw-line seq-6 window-sill" x1="220" y1="94" x2="380" y2="94" stroke="#7fb3d5" stroke-width="0.75"/>
+                  <line class="draw-line seq-6" x1="220" y1="80" x2="220" y2="94" stroke="#7fb3d5" stroke-width="1.5"/>
+                  <line class="draw-line seq-6" x1="380" y1="80" x2="380" y2="94" stroke="#7fb3d5" stroke-width="1.5"/>
+                  <line class="draw-line seq-6" x1="300" y1="80" x2="300" y2="94" stroke="#7fb3d5" stroke-width="1"/>
+
+                  <!-- South-West Corner Window (80 to 140) -->
+                  <line class="draw-line seq-6 window-glazing" x1="80" y1="413" x2="140" y2="413" stroke="#7fb3d5" stroke-width="1.5"/>
+                  <line class="draw-line seq-6 window-sill" x1="80" y1="420" x2="140" y2="420" stroke="#7fb3d5" stroke-width="0.75"/>
+                  <line class="draw-line seq-6 window-sill" x1="94" y1="406" x2="140" y2="406" stroke="#7fb3d5" stroke-width="0.75"/>
+
+                  <!-- Main Entry Door (South Wall: 190 to 260) - 70px / 36" -->
+                  <!-- Door Leaf -->
+                  <line class="draw-line seq-7 door-leaf" x1="190" y1="420" x2="190" y2="350" stroke="#eef1f5" stroke-width="2"/>
+                  <!-- Door Swing 90° Arc -->
+                  <path class="draw-line seq-7 door-arc" d="M 190 350 A 70 70 0 0 1 260 420" stroke="#7fb3d5" stroke-width="1" stroke-dasharray="3 3" fill="none"/>
+
+                  <!-- Ensuite Door (West Wall: 180 to 250) - 70px / 36" -->
+                  <!-- Door Leaf -->
+                  <line class="draw-line seq-7 door-leaf" x1="80" y1="180" x2="150" y2="180" stroke="#eef1f5" stroke-width="2"/>
+                  <!-- Door Swing Arc -->
+                  <path class="draw-line seq-7 door-arc" d="M 150 180 A 70 70 0 0 1 80 250" stroke="#7fb3d5" stroke-width="1" stroke-dasharray="3 3" fill="none"/>
+
+                  <!-- Closet Bifold / Double Doors (East Wall) -->
+                  <line class="draw-line seq-7" x1="430" y1="110" x2="430" y2="210" stroke="#7fb3d5" stroke-width="1" stroke-dasharray="2 2"/>
+                  <path class="draw-line seq-7" d="M 430 110 L 415 130 L 430 150" stroke="#eef1f5" stroke-width="1.5" fill="none"/>
+                  <path class="draw-line seq-7" d="M 430 210 L 415 190 L 430 170" stroke="#eef1f5" stroke-width="1.5" fill="none"/>
+                </g>
+
+                <!-- LAYER 3: Furniture Layout (Architectural Blocks) -->
+                <g class="layer-furniture" id="svg-furniture-layer">
+                  <!-- King Size Bed (North Wall: 230 to 370 x 94 to 264 - 140x170px) -->
+                  <rect class="draw-line seq-8 furn-bed" x="230" y="94" width="140" height="160" stroke="#eef1f5" stroke-width="1.5" fill="none"/>
+                  <!-- Headboard & Pillows -->
+                  <line class="draw-line seq-8" x1="230" y1="106" x2="370" y2="106" stroke="#7fb3d5" stroke-width="1"/>
+                  <rect class="draw-line seq-8" x="240" y="112" width="55" height="32" rx="2" stroke="#7fb3d5" stroke-width="1" fill="none"/>
+                  <rect class="draw-line seq-8" x="305" y="112" width="55" height="32" rx="2" stroke="#7fb3d5" stroke-width="1" fill="none"/>
+                  <!-- Duvet fold line -->
+                  <line class="draw-line seq-8" x1="230" y1="165" x2="370" y2="165" stroke="#7fb3d5" stroke-width="1" stroke-dasharray="3 3"/>
+
+                  <!-- Left Nightstand -->
+                  <rect class="draw-line seq-9 furn-item" x="180" y="94" width="40" height="35" stroke="#eef1f5" stroke-width="1.25" fill="none"/>
+                  <circle class="draw-line seq-9" cx="200" cy="111" r="5" stroke="#7fb3d5" stroke-width="1" fill="none"/>
+
+                  <!-- Right Nightstand -->
+                  <rect class="draw-line seq-9 furn-item" x="380" y="94" width="40" height="35" stroke="#eef1f5" stroke-width="1.25" fill="none"/>
+                  <circle class="draw-line seq-9" cx="400" cy="111" r="5" stroke="#7fb3d5" stroke-width="1" fill="none"/>
+
+                  <!-- Reading Chair (Simplified Standard Architectural Top-Down Symbol: Rounded Seat + Curved Backrest Arc) -->
+                  <g class="draw-line seq-9 furn-item" transform="translate(130, 360) rotate(-45)">
+                    <!-- Rounded Seat Outline -->
+                    <rect x="-14" y="-14" width="28" height="28" rx="4" stroke="#eef1f5" stroke-width="1.5" fill="#14161c"/>
+                    <!-- Curved Backrest Arc -->
+                    <path d="M -12 -6 Q 0 -14 12 -6" stroke="#7fb3d5" stroke-width="1.5" fill="none"/>
+                  </g>
+
+                  <!-- Wardrobe Hanger Rail & Shelving Detail -->
+                  <line class="draw-line seq-9" x1="480" y1="100" x2="480" y2="224" stroke="#7fb3d5" stroke-width="1" stroke-dasharray="4 4"/>
+                  
+                  <!-- Built-in Closet Label (Offset inside closet space with clear mask, never overlapping wall line) -->
+                  <g class="draw-line seq-9" transform="translate(468, 162)">
+                    <rect x="-28" y="-9" width="56" height="18" fill="#14161c" stroke="#2a2e38" stroke-width="0.75"/>
+                    <text class="tag-text" x="0" y="3" text-anchor="middle" fill="#7fb3d5">CLOSET 6'-0"</text>
+                  </g>
+
+                  <!-- 36-inch Egress Circulation Clearance Guide (Dash Line) -->
+                  <path class="draw-line seq-10 egress-line" d="M 225 385 L 225 290 L 120 290 L 120 215" stroke="#7fb3d5" stroke-width="1" stroke-dasharray="4 4" fill="none"/>
+                  <path class="draw-line seq-10 egress-line" d="M 225 290 L 370 290 L 400 290" stroke="#7fb3d5" stroke-width="1" stroke-dasharray="4 4" fill="none"/>
+                </g>
+
+                <!-- LAYER 4: Technical Dimensions & Angle Annotations (Data Layer) -->
+                <g class="layer-annotations" id="svg-annotations-layer">
+                  
+                  <!-- Top Dimension String (North Wall: 16'-0") -->
+                  <g class="dim-group seq-10">
+                    <line x1="80" y1="52" x2="520" y2="52" stroke="#7fb3d5" stroke-width="1" marker-start="url(#tick-start)" marker-end="url(#tick-end)"/>
+                    <line x1="80" y1="75" x2="80" y2="45" stroke="#7fb3d5" stroke-width="0.75"/>
+                    <line x1="520" y1="75" x2="520" y2="45" stroke="#7fb3d5" stroke-width="0.75"/>
+                    <rect x="270" y="42" width="60" height="20" fill="#14161c"/>
+                    <text class="dim-text" x="300" y="56" text-anchor="middle">16'-0"</text>
+                  </g>
+
+                  <!-- Right Dimension String (East Wall: 14'-0") -->
+                  <g class="dim-group seq-10">
+                    <line x1="548" y1="80" x2="548" y2="420" stroke="#7fb3d5" stroke-width="1" marker-start="url(#tick-start)" marker-end="url(#tick-end)"/>
+                    <line x1="525" y1="80" x2="555" y2="80" stroke="#7fb3d5" stroke-width="0.75"/>
+                    <line x1="525" y1="420" x2="555" y2="420" stroke="#7fb3d5" stroke-width="0.75"/>
+                    <rect x="536" y="235" width="24" height="50" fill="#14161c"/>
+                    <text class="dim-text" x="548" y="265" text-anchor="middle" transform="rotate(90 548 265)">14'-0"</text>
+                  </g>
+
+                  <!-- Bottom Clearance Dimension (Amber Highlight: 36" PATH) -->
+                  <g class="dim-group seq-11">
+                    <line x1="225" y1="320" x2="225" y2="260" stroke="#e8a33d" stroke-width="1" marker-start="url(#tick-amber)" marker-end="url(#tick-amber)"/>
+                    <rect x="180" y="280" width="45" height="18" fill="#14161c"/>
+                    <text class="dim-text amber-text" x="202" y="293" text-anchor="middle">36" CLR</text>
+                  </g>
+
+                  <!-- North Window Span Annotation -->
+                  <g class="dim-group seq-11">
+                    <line x1="220" y1="108" x2="380" y2="108" stroke="#7fb3d5" stroke-width="0.75" marker-start="url(#tick-start)" marker-end="url(#tick-end)"/>
+                    <rect x="275" y="100" width="50" height="15" fill="#14161c"/>
+                    <text class="dim-subtext" x="300" y="111" text-anchor="middle">5'-4" WDW</text>
+                  </g>
+
+                  <!-- Angle Callout at SW Chair (Offset & Clear beside the chair) -->
+                  <g class="dim-group seq-11">
+                    <path d="M 100 330 L 120 330 M 100 330 L 115 315" fill="none" stroke="#7fb3d5" stroke-width="0.75"/>
+                    <rect x="122" y="322" width="28" height="14" fill="#14161c"/>
+                    <text class="dim-subtext" x="124" y="332">45°</text>
+                  </g>
+
+                  <!-- Room Identification Callout (AIA Standard Box) -->
+                  <g class="room-tag-box seq-11" transform="translate(265, 335)">
+                    <rect x="0" y="0" width="135" height="42" fill="#1c1f27" stroke="#2a2e38" stroke-width="1"/>
+                    <line x1="0" y1="21" x2="135" y2="21" stroke="#2a2e38" stroke-width="1"/>
+                    <text class="room-title" x="67" y="15" text-anchor="middle">PRIMARY BEDROOM</text>
+                    <text class="room-area" x="67" y="34" text-anchor="middle">224 SQ FT</text>
+                  </g>
+
+                  <!-- Coordinate Benchmark Tag -->
+                  <g class="seq-11" transform="translate(94, 406)">
+                    <circle cx="0" cy="0" r="4" fill="#e8a33d"/>
+                    <text class="dim-subtext amber-text" x="8" y="4">DATUM [0,0,0]</text>
+                  </g>
+
+                  <!-- Architectural Graphic Scale Bar (1/4" = 1'-0") -->
+                  <g class="graphic-scale-bar seq-11" transform="translate(360, 442)">
+                    <text class="dim-subtext" x="65" y="-5" text-anchor="middle">SCALE: 1/4" = 1'-0"</text>
+                    <!-- Alternate Bar Segments: 0 to 1' (12px), 1' to 2' (12px), 2' to 4' (24px), 4' to 8' (48px) -->
+                    <rect x="0" y="0" width="18" height="3.5" fill="#7fb3d5" stroke="#7fb3d5" stroke-width="0.5"/>
+                    <rect x="18" y="0" width="18" height="3.5" fill="#14161c" stroke="#7fb3d5" stroke-width="0.5"/>
+                    <rect x="36" y="0" width="36" height="3.5" fill="#7fb3d5" stroke="#7fb3d5" stroke-width="0.5"/>
+                    <rect x="72" y="0" width="58" height="3.5" fill="#14161c" stroke="#7fb3d5" stroke-width="0.5"/>
+                    <!-- Ticks & Numbers -->
+                    <line x1="0" y1="0" x2="0" y2="6" stroke="#7fb3d5" stroke-width="0.75"/>
+                    <line x1="18" y1="0" x2="18" y2="6" stroke="#7fb3d5" stroke-width="0.75"/>
+                    <line x1="36" y1="0" x2="36" y2="6" stroke="#7fb3d5" stroke-width="0.75"/>
+                    <line x1="72" y1="0" x2="72" y2="6" stroke="#7fb3d5" stroke-width="0.75"/>
+                    <line x1="130" y1="0" x2="130" y2="6" stroke="#7fb3d5" stroke-width="0.75"/>
+                    <text class="dim-subtext" x="0" y="14" text-anchor="middle">0</text>
+                    <text class="dim-subtext" x="18" y="14" text-anchor="middle">1'</text>
+                    <text class="dim-subtext" x="36" y="14" text-anchor="middle">2'</text>
+                    <text class="dim-subtext" x="72" y="14" text-anchor="middle">4'</text>
+                    <text class="dim-subtext" x="130" y="14" text-anchor="middle">8'</text>
+                  </g>
+                </g>
+              </svg>
+
+              <!-- Live Drawing Status Overlay Indicator -->
+              <div class="drawing-indicator" id="draw-pulse-tag">
+                <span class="pulse-dot"></span>
+                <span class="pulse-caption" id="drawing-step-caption">PLOTTING WALL PERIMETER...</span>
+              </div>
+            </div>
+
+            <!-- Layer Controls Filter Strip -->
+            <div class="canvas-layer-strip">
+              <span class="strip-label">ACTIVE LAYERS:</span>
+              <button type="button" class="layer-toggle-btn active" data-layer="walls">
+                <span class="btn-check">■</span> 01_WALLS
+              </button>
+              <button type="button" class="layer-toggle-btn active" data-layer="openings">
+                <span class="btn-check">■</span> 02_OPENINGS
+              </button>
+              <button type="button" class="layer-toggle-btn active" data-layer="furniture">
+                <span class="btn-check">■</span> 03_FURNITURE
+              </button>
+              <button type="button" class="layer-toggle-btn active" data-layer="annotations">
+                <span class="btn-check">■</span> 04_ANNOTATIONS
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION 2: HOW IT WORKS (Technical Numbered Sequence) -->
+    <section class="process-section" id="how-it-works">
+      <div class="section-container">
+        
+        <div class="section-header">
+          <div class="section-tag">[ WORKFLOW SPECIFICATION // ISO 19650 ]</div>
+          <h2 class="section-title">A deterministic pipeline from text to vector.</h2>
+          <p class="section-desc">
+            No generative hallucinations. Datum uses a geometric constraint solver built on structural architectural rules to assemble valid floor plans.
+          </p>
+        </div>
+
+        <div class="pipeline-grid">
+          <!-- Step 01 -->
+          <div class="pipeline-card">
+            <div class="card-step-header">
+              <span class="step-index">01</span>
+              <span class="step-status">STAGE: PARSE</span>
+            </div>
+            
+            <div class="card-schematic-visual">
+              <div class="token-stream">
+                <span class="token token-dim">16x14ft</span>
+                <span class="token token-obj">KING_BED</span>
+                <span class="token token-wall">WALL_NORTH</span>
+                <span class="token token-clr">CLEARANCE_36IN</span>
+              </div>
+              <div class="code-line">EXTRACT_ENTITIES(text) → 14 constraints</div>
+            </div>
+
+            <div class="card-content">
+              <h3 class="card-title">Natural Language Parsing</h3>
+              <p class="card-text">
+                The NLP parser extracts spatial dimensions, orientation anchors (cardinal or relative), fixture lists, clearances, and circulation requirements into structured JSON constraint trees.
+              </p>
+              <div class="card-spec-footer">
+                <code>INPUT: RAW STRING</code>
+                <code>OUTPUT: AST (SPATIAL)</code>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 02 -->
+          <div class="pipeline-card">
+            <div class="card-step-header">
+              <span class="step-index">02</span>
+              <span class="step-status">STAGE: SOLVE</span>
+            </div>
+            
+            <div class="card-schematic-visual">
+              <div class="solver-matrix">
+                <div class="matrix-row">
+                  <span>WALL_THICKNESS:</span>
+                  <span class="val-blue">5.5" [EXT] / 3.5" [INT]</span>
+                </div>
+                <div class="matrix-row">
+                  <span>EGRESS_CLEARANCE:</span>
+                  <span class="val-amber">&ge; 36" (ADA COMPLIANT)</span>
+                </div>
+                <div class="matrix-row">
+                  <span>DOOR_SWING_COLLISION:</span>
+                  <span class="val-blue">0 DETECTED</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-content">
+              <h3 class="card-title">Constraint Resolution Engine</h3>
+              <p class="card-text">
+                A non-linear geometric solver computes coordinate boundaries, ensures code-compliant egress paths, aligns doors with swing arcs, and optimizes natural lighting penetration from window bays.
+              </p>
+              <div class="card-spec-footer">
+                <code>ALGORITHM: SMT / GEOM-SOLVER</code>
+                <code>TOLERANCE: ±1/64" [0.015 IN]</code>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 03 -->
+          <div class="pipeline-card">
+            <div class="card-step-header">
+              <span class="step-index">03</span>
+              <span class="step-status">STAGE: COMPILE</span>
+            </div>
+            
+            <div class="card-schematic-visual">
+              <div class="export-formats">
+                <div class="fmt-pill"><span class="fmt-ext">.DXF</span><span class="fmt-sub">AUTOCAD</span></div>
+                <div class="fmt-pill"><span class="fmt-ext">.IFC</span><span class="fmt-sub">BIM 4.0</span></div>
+                <div class="fmt-pill"><span class="fmt-ext">.SVG</span><span class="fmt-sub">VECTOR</span></div>
+                <div class="fmt-pill"><span class="fmt-ext">.PDF</span><span class="fmt-sub">ARCH D</span></div>
+              </div>
+            </div>
+
+            <div class="card-content">
+              <h3 class="card-title">Vector & BIM Compilation</h3>
+              <p class="card-text">
+                The finalized geometric model exports directly to layered CAD formats (.DXF, .DWG), open BIM containers (.IFC), or vector assets with dimension lines, text layers, and title blocks intact.
+              </p>
+              <div class="card-spec-footer">
+                <code>LAYERS: AIA STANDARD</code>
+                <code>PRECISION: DOUBLE-FLOAT</code>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION 3: INTERACTIVE DEMO SANDBOX -->
+    <section class="demo-section" id="interactive-demo">
+      <div class="section-container">
+        
+        <div class="section-header">
+          <div class="section-tag">[ LIVE SCHEMATIC RE-COMPILER // TEST BENCH ]</div>
+          <h2 class="section-title">Select a room brief. Watch it compile.</h2>
+          <p class="section-desc">
+            Toggle between architectural room briefs or input custom specifications to test the live constraint solver.
+          </p>
+        </div>
+
+        <div class="sandbox-wrapper">
+          <!-- Preset Selector Sidebar -->
+          <div class="sandbox-sidebar">
+            <div class="sidebar-label">SELECT BENCHMARK BRIEF:</div>
+            
+            <button type="button" class="preset-btn active" data-preset="bedroom">
+              <div class="preset-top">
+                <span class="preset-id">BRIEF_01</span>
+                <span class="preset-type">RESIDENTIAL</span>
+              </div>
+              <div class="preset-title">Primary Bedroom Suite</div>
+              <div class="preset-meta">16' x 14' // 224 sq ft // King Layout</div>
+            </button>
+
+            <button type="button" class="preset-btn" data-preset="studio">
+              <div class="preset-top">
+                <span class="preset-id">BRIEF_02</span>
+                <span class="preset-type">MULTI-ZONE</span>
+              </div>
+              <div class="preset-title">Urban Studio & Galley Kitchen</div>
+              <div class="preset-meta">24' x 18' // 432 sq ft // Open Plan</div>
+            </button>
+
+            <button type="button" class="preset-btn" data-preset="office">
+              <div class="preset-top">
+                <span class="preset-id">BRIEF_03</span>
+                <span class="preset-type">COMMERCIAL</span>
+              </div>
+              <div class="preset-title">Executive Corner Office</div>
+              <div class="preset-meta">20' x 16' // 320 sq ft // Egress Verified</div>
+            </button>
+            
+            <div class="custom-prompt-entry">
+              <label for="custom-input-field" class="custom-label">CUSTOM TEXT INPUT:</label>
+              <textarea id="custom-input-field" rows="3" placeholder="e.g. 12x12ft dining room with 6-seat table centered, credenza against south wall..."></textarea>
+              <button type="button" class="btn btn-secondary btn-full" id="custom-compile-btn">
+                <span class="btn-bracket">[</span>
+                <span class="btn-text">COMPILE CUSTOM TEXT</span>
+                <span class="btn-bracket">]</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Interactive Plan Viewer Area -->
+          <div class="sandbox-viewer">
+            <div class="viewer-top-bar">
+              <div class="viewer-crumbs">
+                <span class="crumb-root">ROOT &gt;</span>
+                <span class="crumb-active" id="viewer-plan-name">PRIMARY_BEDROOM_SUITE.DXF</span>
+              </div>
+              <div class="viewer-stats">
+                <span class="vstat">TOTAL AREA: <strong id="stat-area">224 SQ FT</strong></span>
+                <span class="vstat">DOORS: <strong id="stat-doors">2 UNITS</strong></span>
+                <span class="vstat">WINDOWS: <strong id="stat-windows">2 BAYS</strong></span>
+              </div>
+            </div>
+
+            <!-- Dynamic SVG Blueprint Renderer -->
+            <div class="sandbox-canvas-viewport">
+              <svg id="sandbox-svg" viewBox="0 0 600 450" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <!-- Dynamically populated by app.js -->
+              </svg>
+
+              <!-- Zoom & Pan Controls -->
+              <div class="viewport-tools" aria-label="Blueprint Canvas Tools">
+                <button type="button" class="tool-btn" id="tool-zoom-in" title="Zoom In">+</button>
+                <button type="button" class="tool-btn" id="tool-zoom-out" title="Zoom Out">-</button>
+                <button type="button" class="tool-btn" id="tool-reset" title="Reset View">1:1</button>
+                <button type="button" class="tool-btn" id="tool-export" title="Export Plan">EXP</button>
+              </div>
+            </div>
+
+            <div class="viewer-bottom-bar">
+              <span class="bot-info">SOLVER ITERATIONS: 182 // CONVERGENCE: 100% // ISO-13567 LAYER STANDARD</span>
+              <span class="bot-scale">SCALE: 1/4" = 1'-0"</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION 4: TECHNICAL FEATURE GRID (4 Hairline Panels) -->
+    <section class="features-section" id="specifications">
+      <div class="section-container">
+        
+        <div class="section-header">
+          <div class="section-tag">[ CAPABILITIES & ARCHITECTURAL STANDARDS ]</div>
+          <h2 class="section-title">Built for architectural fidelity, not sketches.</h2>
+          <p class="section-desc">
+            Four foundational engineering principles ensure generated drawings meet standard practice.
+          </p>
+        </div>
+
+        <div class="features-grid">
+          
+          <!-- Feature 1 -->
+          <div class="feature-panel">
+            <div class="panel-header">
+              <span class="panel-index">FEAT_01</span>
+              <span class="panel-tag">PARAMETRIC</span>
+            </div>
+            <div class="panel-visual">
+              <svg viewBox="0 0 200 80" class="feat-svg" aria-hidden="true">
+                <rect x="20" y="20" width="160" height="40" stroke="#7fb3d5" stroke-width="1" fill="none"/>
+                <line x1="20" y1="10" x2="180" y2="10" stroke="#e8a33d" stroke-width="1" marker-start="url(#tick-amber)" marker-end="url(#tick-amber)"/>
+                <text x="100" y="8" fill="#e8a33d" font-family="JetBrains Mono" font-size="9" text-anchor="middle">L &gt; 16'-0" ± 0.05</text>
+                <line x1="60" y1="20" x2="60" y2="60" stroke="#2a2e38" stroke-width="1" stroke-dasharray="2 2"/>
+                <line x1="140" y1="20" x2="140" y2="60" stroke="#2a2e38" stroke-width="1" stroke-dasharray="2 2"/>
+              </svg>
+            </div>
+            <h3 class="panel-title">Parametric Dimensioning & Clearances</h3>
+            <p class="panel-text">
+              Every element adheres to strict bounding constraints. Clearances around beds (min 30"), table seating perimeters (min 36"), and door paths are mathematically enforced to eliminate pinch points.
+            </p>
+            <ul class="panel-specs">
+              <li><span>ADA Section 404 Egress</span><span class="spec-val">PASSED</span></li>
+              <li><span>Fixture Spacing Tolerances</span><span class="spec-val">±1/16"</span></li>
+            </ul>
+          </div>
+
+          <!-- Feature 2 -->
+          <div class="feature-panel">
+            <div class="panel-header">
+              <span class="panel-index">FEAT_02</span>
+              <span class="panel-tag">SYMBOLOGY</span>
+            </div>
+            <div class="panel-visual">
+              <svg viewBox="0 0 200 80" class="feat-svg" aria-hidden="true">
+                <!-- Door Arc -->
+                <line x1="40" y1="65" x2="40" y2="25" stroke="#eef1f5" stroke-width="1.5"/>
+                <path d="M 40 25 A 40 40 0 0 1 80 65" stroke="#7fb3d5" stroke-width="1" stroke-dasharray="2 2" fill="none"/>
+                <!-- Window Cutout -->
+                <rect x="120" y="30" width="60" height="20" stroke="#2a2e38" stroke-width="1" fill="#14161c"/>
+                <line x1="120" y1="40" x2="180" y2="40" stroke="#7fb3d5" stroke-width="1.5"/>
+                <line x1="120" y1="33" x2="180" y2="33" stroke="#7fb3d5" stroke-width="0.75"/>
+                <line x1="120" y1="47" x2="180" y2="47" stroke="#7fb3d5" stroke-width="0.75"/>
+              </svg>
+            </div>
+            <h3 class="panel-title">Standard Architectural Symbols</h3>
+            <p class="panel-text">
+              Outputs adhere strictly to AIA and ISO graphic standards. Single and double door swings, bi-fold tracks, sliding pocket partitions, double-hung windows, and electrical datum points render with standard lineweights.
+            </p>
+            <ul class="panel-specs">
+              <li><span>AIA Document E202 Standard</span><span class="spec-val">LOD 300</span></li>
+              <li><span>Layer Mapping ISO 13567</span><span class="spec-val">ACTIVE</span></li>
+            </ul>
+          </div>
+
+          <!-- Feature 3 -->
+          <div class="feature-panel">
+            <div class="panel-header">
+              <span class="panel-index">FEAT_03</span>
+              <span class="panel-tag">INTEROPERABILITY</span>
+            </div>
+            <div class="panel-visual">
+              <svg viewBox="0 0 200 80" class="feat-svg" aria-hidden="true">
+                <rect x="30" y="20" width="40" height="40" stroke="#2a2e38" fill="#14161c"/>
+                <text x="50" y="44" fill="#7fb3d5" font-family="JetBrains Mono" font-size="10" text-anchor="middle">IFC</text>
+                
+                <path d="M 75 40 L 95 40" stroke="#e8a33d" stroke-width="1.5"/>
+                <polygon points="95,40 90,37 90,43" fill="#e8a33d"/>
+
+                <rect x="100" y="20" width="70" height="40" stroke="#7fb3d5" stroke-width="1" fill="#14161c"/>
+                <text x="135" y="38" fill="#eef1f5" font-family="JetBrains Mono" font-size="9" text-anchor="middle">REVIT/CAD</text>
+                <text x="135" y="50" fill="#7fb3d5" font-family="JetBrains Mono" font-size="8" text-anchor="middle">NATIVE_IMPORT</text>
+              </svg>
+            </div>
+            <h3 class="panel-title">Direct CAD & BIM Pipeline</h3>
+            <p class="panel-text">
+              Export directly into your existing drafting workflow. Every element is grouped by layer (A-WALL, A-DOOR, A-GLAZ, A-FLOR-FIXT) with clean polylines and closed boundary loops for instant extrusion.
+            </p>
+            <ul class="panel-specs">
+              <li><span>Compatible Software</span><span class="spec-val">Revit, AutoCAD, Rhino</span></li>
+              <li><span>Polygons</span><span class="spec-val">Clean Manifold 2D</span></li>
+            </ul>
+          </div>
+
+          <!-- Feature 4 -->
+          <div class="feature-panel">
+            <div class="panel-header">
+              <span class="panel-index">FEAT_04</span>
+              <span class="panel-tag">ANALYTICS</span>
+            </div>
+            <div class="panel-visual">
+              <svg viewBox="0 0 200 80" class="feat-svg" aria-hidden="true">
+                <circle cx="100" cy="40" r="30" stroke="#2a2e38" stroke-width="1" fill="none"/>
+                <line x1="70" y1="40" x2="130" y2="40" stroke="#7fb3d5" stroke-width="1"/>
+                <line x1="100" y1="10" x2="100" y2="70" stroke="#7fb3d5" stroke-width="1"/>
+                <circle cx="100" cy="40" r="15" stroke="#e8a33d" stroke-width="1" stroke-dasharray="2 2" fill="none"/>
+                <circle cx="100" cy="40" r="3" fill="#e8a33d"/>
+              </svg>
+            </div>
+            <h3 class="panel-title">Spatial Egress & Daylight Indexing</h3>
+            <p class="panel-text">
+              Instant evaluation of circulation efficiency, window-to-floor daylight ratio (DF%), and shortest egress travel distance to primary exits according to international residential building codes (IRC/IBC).
+            </p>
+            <ul class="panel-specs">
+              <li><span>IBC Minimum Room Area</span><span class="spec-val">&ge; 70 SQ FT (VERIFIED)</span></li>
+              <li><span>Daylight Glazing Ratio</span><span class="spec-val">&ge; 8% COMPLIANT</span></li>
+            </ul>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION 5: BLUEPRINT ANNOTATION CALLOUT (Testimonial) -->
+    <section class="annotation-section" id="callout">
+      <div class="section-container">
+        
+        <div class="annotation-frame">
+          <!-- Drafting Reference Leader Lines -->
+          <div class="leader-line top-left" aria-hidden="true">
+            <div class="ref-bubble">
+              <span class="bubble-num">04</span>
+              <span class="bubble-sheet">A-102</span>
+            </div>
+            <div class="leader-arm"></div>
+          </div>
+
+          <div class="annotation-content">
+            <div class="annotation-meta">
+              <span class="anno-tag">FIELD NOTE // ARCHITECTURAL REVIEW</span>
+              <span class="anno-rev">NOTE REF: NR-2026-08</span>
+            </div>
+
+            <blockquote class="annotation-quote">
+              "Most generative layout tools produce fantasy floor plans with impossible wall thicknesses and doors that swing into beds. Datum gives our studio production-grade vector polylines that drop directly into our Revit templates without redrawing."
+            </blockquote>
+
+            <div class="annotation-author">
+              <div class="author-details">
+                <span class="author-name">MARCUS V. LINDSTROM, AIA</span>
+                <span class="author-title">Principal Architect, Studio Orthogonal / Stockholm & NYC</span>
+              </div>
+              <div class="author-stamp">
+                <div class="stamp-box">
+                  <span class="stamp-text">ARCHITECTURAL SEAL</span>
+                  <span class="stamp-id">LIC. #NY-489201</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Corner ticks -->
+          <span class="corner-tick c-tl">+</span>
+          <span class="corner-tick c-tr">+</span>
+          <span class="corner-tick c-bl">+</span>
+          <span class="corner-tick c-br">+</span>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SECTION 6: FINAL CTA SECTION -->
+    <section class="cta-section" id="deploy">
+      <div class="section-container">
+        
+        <div class="cta-card">
+          <div class="cta-header">
+            <span class="cta-spec-id">SPECIFICATION SHEET: 01 // PRODUCTION DEPLOYMENT</span>
+            <span class="cta-status">SERVER: ONLINE [REGION: US-EAST]</span>
+          </div>
+
+          <div class="cta-body">
+            <h2 class="cta-title">Turn your specifications into CAD today.</h2>
+            <p class="cta-desc">
+              Connect via web compiler, CLI toolchain, or integrate our spatial solver API directly into your architectural pipeline.
+            </p>
+
+            <form class="cta-prompt-form" id="lead-compile-form" onsubmit="event.preventDefault();">
+              <div class="input-terminal">
+                <label for="lead-text-input" class="terminal-label">DATUM_CLI &gt; ENTER ROOM BRIEF:</label>
+                <div class="terminal-row">
+                  <input type="text" id="lead-text-input" class="terminal-input" value="Living room 22x16ft, 3-seater sofa facing north fireplace, dining table for 6 south..." placeholder="Type room dimensions and requirements...">
+                  <button type="submit" class="btn btn-primary" id="cta-action-btn">
+                    <span class="btn-bracket">[</span>
+                    <span class="btn-text">GENERATE .DXF</span>
+                    <span class="btn-bracket">]</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            <div class="cta-badges">
+              <span class="badge-item"><span class="badge-icon">✓</span> NO CREDIT CARD REQUIRED</span>
+              <span class="badge-item"><span class="badge-icon">✓</span> INSTANT AUTOCAD & REVIT COMPATIBLE</span>
+              <span class="badge-item"><span class="badge-icon">✓</span> COMMERCIAL LOD-300 EXPORT</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <!-- SECTION 7: FOOTER STYLED AS AUTHENTIC ARCHITECTURAL TITLE BLOCK -->
+  <footer class="blueprint-title-block" id="title-block">
+    <div class="title-block-container">
+      
+      <!-- Left: Firm & Project Metadata -->
+      <div class="block-cell cell-firm">
+        <div class="firm-logo-row">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <line x1="12" y1="1" x2="12" y2="6" stroke="#7fb3d5" stroke-width="1.5"/>
+            <line x1="12" y1="18" x2="12" y2="23" stroke="#7fb3d5" stroke-width="1.5"/>
+            <line x1="1" y1="12" x2="6" y2="12" stroke="#7fb3d5" stroke-width="1.5"/>
+            <line x1="18" y1="12" x2="23" y2="12" stroke="#7fb3d5" stroke-width="1.5"/>
+            <circle cx="12" cy="12" r="6" stroke="#eef1f5" stroke-width="1.5" fill="none"/>
+            <circle cx="12" cy="12" r="2" fill="#e8a33d"/>
+          </svg>
+          <span class="firm-title">DATUM SPATIAL SYSTEMS INC.</span>
+        </div>
+        <p class="firm-address">NEURAL DRAFTING LABS // 450 LEXINGTON AVE, SUITE 2400, NEW YORK, NY 10017</p>
+        <p class="firm-copy">&copy; 2026 DATUM CORE TECHNOLOGIES. ALL RIGHTS RESERVED.</p>
+      </div>
+
+      <!-- Middle 1: Project Information -->
+      <div class="block-cell cell-project">
+        <div class="cell-label">PROJECT</div>
+        <div class="cell-value-strong">DATUM NEURAL CAD PLATFORM</div>
+        <div class="cell-sub">AUTONOMOUS 2D/3D SPATIAL COMPILER</div>
+      </div>
+
+      <!-- Middle 2: Drawing Description -->
+      <div class="block-cell cell-drawing">
+        <div class="cell-label">SHEET TITLE</div>
+        <div class="cell-value-strong">LANDING SPECIFICATION &amp; DEMO</div>
+        <div class="cell-sub">SCHEMATIC DESIGN PHASE (SD)</div>
+      </div>
+
+      <!-- Grid Column: Metrics Matrix -->
+      <div class="block-cell cell-specs">
+        <div class="mini-spec-row">
+          <span class="m-label">SCALE:</span>
+          <span class="m-val">1/4" = 1'-0"</span>
+        </div>
+        <div class="mini-spec-row">
+          <span class="m-label">DATE:</span>
+          <span class="m-val">2026.08.16</span>
+        </div>
+        <div class="mini-spec-row">
+          <span class="m-label">DRAWN BY:</span>
+          <span class="m-val">AI_ENGINE_v2.4</span>
+        </div>
+        <div class="mini-spec-row">
+          <span class="m-label">CHECKED BY:</span>
+          <span class="m-val">M. LINDSTROM, AIA</span>
+        </div>
+      </div>
+
+      <!-- Right: Sheet Number & Revision Stamp -->
+      <div class="block-cell cell-sheet-id">
+        <div class="cell-label">SHEET NO.</div>
+        <div class="sheet-number-huge">A-101.0</div>
+        <div class="revision-stamp">
+          <span class="rev-label">REV:</span>
+          <span class="rev-val">C [RELEASE]</span>
+        </div>
+      </div>
+
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
