@@ -4,12 +4,70 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+  initMobileNavigation();
   initCursorTelemetry();
   initHeroLineDrawing();
   initLayerToggles();
   initSandboxCompiler();
   initHeroCompilerInteractions();
 });
+
+/* ==========================================================================
+   0. MOBILE DRAWER NAVIGATION CONTROLLER
+   ========================================================================== */
+function initMobileNavigation() {
+  const toggleBtn = document.getElementById('mobile-nav-toggle');
+  const drawer = document.getElementById('mobile-nav-drawer');
+  const drawerLinks = document.querySelectorAll('.drawer-item, .drawer-cta');
+
+  if (!toggleBtn || !drawer) return;
+
+  function openDrawer() {
+    toggleBtn.classList.add('active');
+    toggleBtn.setAttribute('aria-expanded', 'true');
+    drawer.classList.add('open');
+    drawer.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeDrawer() {
+    toggleBtn.classList.remove('active');
+    toggleBtn.setAttribute('aria-expanded', 'false');
+    drawer.classList.remove('open');
+    drawer.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+  }
+
+  toggleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = drawer.classList.contains('open');
+    if (isOpen) {
+      closeDrawer();
+    } else {
+      openDrawer();
+    }
+  });
+
+  // Close drawer when any nav link is tapped
+  drawerLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      closeDrawer();
+    });
+  });
+
+  // Close drawer on Escape key or outside click
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && drawer.classList.contains('open')) {
+      closeDrawer();
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (drawer.classList.contains('open') && !drawer.contains(e.target) && !toggleBtn.contains(e.target)) {
+      closeDrawer();
+    }
+  });
+}
 
 /* ==========================================================================
    1. CURSOR DRAFTING TELEMETRY (IMPERIAL FEET & INCHES)
